@@ -1,0 +1,6 @@
+x = int(8)
+y = int(8.88)
+z = int("8")
+print(x)
+print(y)
+print(z)
