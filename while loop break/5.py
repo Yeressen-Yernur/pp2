@@ -1,0 +1,6 @@
+a = 1
+while a <= 5:
+    if a == 4:
+        break
+    print(a)
+    a += 1
