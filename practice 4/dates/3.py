@@ -1,5 +1,4 @@
-import datetime
-
-x = datetime.datetime(2008 , 6 , 23)
-
-print(x)
+from datetime import datetime
+now = datetime.now()
+without_microseconds = now.replace(microsecond=0)
+print(without_microseconds)

@@ -1,7 +1,8 @@
-def yernur(n):
-    cnt = 1
-    while cnt <= n:
-        yield cnt
-        cnt += 1
-for i in yernur(5):
-    print(i)
+def generator(n):
+    for i in range(n + 1):
+        if i % 3 == 0 and i % 4 == 0:
+            yield i
+
+n = int(input())
+
+print(" ".join(str(num) for num in generator(n)))

@@ -1,8 +1,7 @@
-def large_sequence(n):
-  for i in range(n):
-    yield i
+def generator(a, b):
+    for i in range(a, b+1):
+        yield i * i
 
-gen = large_sequence(1000000)
-print(next(gen))
-print(next(gen))
-print(next(gen))
+a, b = map(int, input().split())
+
+print(" ".join(str(num) for num in generator(a,b)))

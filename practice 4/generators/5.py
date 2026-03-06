@@ -1,9 +1,8 @@
-def simple_gen():
-  yield "Yeressen"
-  yield "Yernur"
-  yield "Arnuruly"
+def generator(n):
+    while n != 0:
+        yield n
+        n -= 1
 
-gen = simple_gen()
-print(next(gen))
-print(next(gen))
-print(next(gen))
+n = int(input())
+
+print(" ".join(str(num) for num in generator(n)))
