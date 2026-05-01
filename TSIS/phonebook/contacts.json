@@ -1,0 +1,26 @@
+[
+  {
+    "name": "Ali",
+    "email": "ali@gmail.com",
+    "birthday": "2002-01-10",
+    "group": "Friend",
+    "phone": "777111222",
+    "type": "mobile"
+  },
+  {
+    "name": "Aruzhan",
+    "email": "aruzhan@gmail.com",
+    "birthday": "2001-05-20",
+    "group": "Work",
+    "phone": "777333444",
+    "type": "home"
+  },
+  {
+    "name": "Dias",
+    "email": "dias@mail.com",
+    "birthday": "2000-12-01",
+    "group": "Family",
+    "phone": "777999000",
+    "type": "work"
+  }
+]
