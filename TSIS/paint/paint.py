@@ -13,11 +13,15 @@ CANVAS_X = TOOLBAR_W
 CANVAS_W = WINDOW_W - TOOLBAR_W
 CANVAS_H = WINDOW_H
 
-BG_COLOR = (30, 30, 38)
-TOOLBAR_COLOR = (22, 22, 30)
-PANEL_BORDER = (55, 55, 70)
-ACCENT = (100, 149, 237)
-TEXT_COLOR = (220, 220, 230)
+# 🎨 NEW MODERN STYLE
+BG_COLOR = (18, 18, 24)
+TOOLBAR_COLOR = (28, 28, 38)
+PANEL_BORDER = (60, 60, 80)
+
+ACCENT = (120, 170, 255)
+TEXT_COLOR = (235, 235, 245)
+MUTED_TEXT = (160, 160, 180)
+
 CANVAS_BG = (255, 255, 255)
 
 PALETTE = [
@@ -41,20 +45,17 @@ TOOLS = [
     ("Text","A",TextTool()),
 ]
 
-def draw_rounded_rect(surf, color, rect, radius=8, border=0, border_color=None):
+def draw_rounded_rect(surf, color, rect, radius=10, border=0, border_color=None):
     pygame.draw.rect(surf, color, rect, border_radius=radius)
     if border and border_color:
         pygame.draw.rect(surf, border_color, rect, border, border_radius=radius)
 
-def label(surf, font, text, pos, color=TEXT_COLOR, center=False):
+def label(surf, font, text, pos, color=TEXT_COLOR):
     s = font.render(text, True, color)
-    r = s.get_rect()
-    if center:
-        r.centerx = pos[0]
-        r.y = pos[1]
-    else:
-        r.topleft = pos
-    surf.blit(s, r)
+    surf.blit(s, pos)
+
+def is_hover(rect, mouse):
+    return rect.collidepoint(mouse)
 
 def main():
     pygame.init()
@@ -71,13 +72,6 @@ def main():
     active_color = (0,0,0)
     brush_size_key = 1
     drawing = False
-    status_msg = "Ready"
-    status_timer = 0
-
-    def set_status(msg, ms=2500):
-        nonlocal status_msg, status_timer
-        status_msg = msg
-        status_timer = pygame.time.get_ticks() + ms
 
     def current_size():
         return BRUSH_SIZES[brush_size_key]
@@ -92,76 +86,53 @@ def main():
         return p[0] >= CANVAS_X
 
     PAD = 10
-    tool_buttons = []
-    for i in range(len(TOOLS)):
-        row, col = divmod(i, 2)
-        tool_buttons.append(pygame.Rect(PAD + col*(TOOLBAR_W//2-PAD),
-                                        50 + row*42,
-                                        TOOLBAR_W//2-PAD-4, 34))
 
-    size_buttons = []
-    for i in range(3):
-        size_buttons.append(pygame.Rect(PAD + i*((TOOLBAR_W-PAD*2)//3),
-                                        50 + ((len(TOOLS)+1)//2)*42 + 30,
-                                        (TOOLBAR_W-PAD*2)//3 - 4, 30))
+    tool_buttons = [
+        pygame.Rect(PAD + (i%2)*(TOOLBAR_W//2-PAD),
+                    60 + (i//2)*42,
+                    TOOLBAR_W//2-PAD-6, 34)
+        for i in range(len(TOOLS))
+    ]
 
-    palette_top = size_buttons[-1].bottom + 20
+    size_buttons = [
+        pygame.Rect(PAD + i*((TOOLBAR_W-PAD*2)//3),
+                    60 + ((len(TOOLS)+1)//2)*42 + 40,
+                    (TOOLBAR_W-PAD*2)//3 - 6, 30)
+        for i in range(3)
+    ]
+
+    palette_top = size_buttons[-1].bottom + 25
+
     swatches = []
     for i, c in enumerate(PALETTE):
         row, col = divmod(i, 6)
         swatches.append((pygame.Rect(PAD+col*25, palette_top+20+row*25, 22, 22), c))
 
     running = True
+
     while running:
-        now = pygame.time.get_ticks()
         mouse = pygame.mouse.get_pos()
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
 
-            elif event.type == pygame.KEYDOWN:
-                tool = current_tool()
-                if isinstance(tool, TextTool) and tool.active:
-                    tool.handle_key(event, canvas, active_color, current_size())
-                    continue
-
-                if pygame.key.get_mods() & pygame.KMOD_CTRL:
-                    if event.key == pygame.K_s:
-                        fname = datetime.now().strftime("canvas_%Y%m%d_%H%M%S.png")
-                        pygame.image.save(canvas, fname)
-                        set_status(fname)
-                    continue
-
-                ch = event.unicode.upper() if event.unicode else ""
-                for i, (_, k, _) in enumerate(TOOLS):
-                    if ch == k:
-                        active_tool_idx = i
-
-                if event.key == pygame.K_1: brush_size_key = 1
-                if event.key == pygame.K_2: brush_size_key = 2
-                if event.key == pygame.K_3: brush_size_key = 3
-
-            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            elif event.type == pygame.MOUSEBUTTONDOWN:
                 pos = event.pos
-                used = False
 
                 for i, r in enumerate(tool_buttons):
                     if r.collidepoint(pos):
                         active_tool_idx = i
-                        used = True
 
                 for i, r in enumerate(size_buttons):
                     if r.collidepoint(pos):
                         brush_size_key = i+1
-                        used = True
 
                 for r, c in swatches:
                     if r.collidepoint(pos):
                         active_color = c
-                        used = True
 
-                if not used and in_canvas(pos):
+                if in_canvas(pos):
                     drawing = True
                     current_tool().on_mouse_down(canvas, canvas_pos(pos), active_color, current_size())
 
@@ -169,42 +140,73 @@ def main():
                 if drawing and in_canvas(event.pos):
                     current_tool().on_mouse_move(canvas, canvas_pos(event.pos), active_color, current_size())
 
-            elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+            elif event.type == pygame.MOUSEBUTTONUP:
                 if drawing:
                     current_tool().on_mouse_up(canvas, canvas_pos(event.pos), active_color, current_size())
                     drawing = False
 
+        # 🧊 background
         screen.fill(BG_COLOR)
+
+        # sidebar
         pygame.draw.rect(screen, TOOLBAR_COLOR, (0,0,TOOLBAR_W,WINDOW_H))
         pygame.draw.line(screen, PANEL_BORDER, (TOOLBAR_W,0),(TOOLBAR_W,WINDOW_H),2)
 
-        label(screen, font_big, "Paint", (PAD,10), ACCENT)
+        label(screen, font_big, "PAINT", (15,15), ACCENT)
 
+        # tools
         for i, (name, shortcut, _) in enumerate(TOOLS):
             r = tool_buttons[i]
             active = i == active_tool_idx
-            draw_rounded_rect(screen, ACCENT if active else (45,45,58), r, 6, 1,
-                              ACCENT if active else PANEL_BORDER)
+            hover = is_hover(r, mouse)
+
+            color = TOOLBAR_COLOR
+            if active:
+                color = ACCENT
+            elif hover:
+                color = (40,40,55)
+
+            draw_rounded_rect(screen, color, r, 10, 1, PANEL_BORDER)
+
             txt = font_sm.render(f"{shortcut} {name}", True,
                                  (255,255,255) if active else TEXT_COLOR)
             screen.blit(txt, txt.get_rect(center=r.center))
 
+        # sizes
         for i, r in enumerate(size_buttons):
             active = brush_size_key == i+1
-            draw_rounded_rect(screen, ACCENT if active else (45,45,58), r, 6, 1,
-                              ACCENT if active else PANEL_BORDER)
+            hover = is_hover(r, mouse)
+
+            color = (45,45,58)
+            if active:
+                color = ACCENT
+            elif hover:
+                color = (55,55,75)
+
+            draw_rounded_rect(screen, color, r, 8, 1, PANEL_BORDER)
+
             txt = font_sm.render(["S","M","L"][i], True,
                                  (255,255,255) if active else TEXT_COLOR)
             screen.blit(txt, txt.get_rect(center=r.center))
 
+        # palette
         for r, c in swatches:
-            pygame.draw.rect(screen, c, r)
+            pygame.draw.rect(screen, c, r, border_radius=6)
+
             if c == active_color:
-                pygame.draw.rect(screen, (255,255,255), r, 2)
+                pygame.draw.rect(screen, ACCENT, r, 2, border_radius=6)
+            elif is_hover(r, mouse):
+                pygame.draw.rect(screen, (255,255,255), r, 1, border_radius=6)
+
+        # canvas frame
+        draw_rounded_rect(screen, (25,25,35),
+                          (CANVAS_X-5, -5, CANVAS_W+10, CANVAS_H+10),
+                          12)
 
         screen.blit(canvas, (CANVAS_X,0))
 
-        if drawing or (isinstance(current_tool(), TextTool) and current_tool().active):
+        # preview
+        if drawing:
             preview = canvas.copy()
             current_tool().draw_preview(preview, canvas_pos(mouse), active_color, current_size())
             screen.blit(preview, (CANVAS_X,0))
