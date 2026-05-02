@@ -1,176 +1,140 @@
 import pygame
 import sys
 
-import ui
-import racer
-import persistence
+from racer import Racer
+from coin import Coin
+from obstacle import Obstacle
+from ui import draw_game, draw_menu, draw_game_over
+from persistence import load_scores, save_score
 
-W, H = 480, 700
-FPS  = 60
+pygame.init()
 
+screen = pygame.display.set_mode((500, 700))
+pygame.display.set_caption("Racing Game")
 
-def run():
-    pygame.init()
-    screen = pygame.display.set_mode((W, H))
-    pygame.display.set_caption("Turbo Racer – TSIS-3")
-    clock  = pygame.time.Clock()
+clock = pygame.time.Clock()
 
-    settings = persistence.load_settings()
-    lb_data  = persistence.load_leaderboard()
+# ── game state ─────────────────────
+player = Racer()
 
+coins = []
+obstacles = []
 
-    STATE   = "menu"   
-    game    = None
-    username_buf = ""
-    gameover_data = {}
+state = "menu"
 
-    def start_game():
-        nonlocal game
-        game = racer.RacerGame(W, H, settings, username_buf)
+score = 0
+money = 0
 
-    while True:
-        dt         = clock.tick(FPS) / 1000.0
-        mouse_pos  = pygame.mouse.get_pos()
+spawn_timer = 0
 
-        # ── events ────────────────────────────────────────────────────────────
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
-
-            # ── MENU ──────────────────────────────────────────────────────────
-            if STATE == "menu":
-                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                    btns = ui.draw_main_menu(screen, mouse_pos, W, H)
-                    if btns["Play"].collidepoint(mouse_pos):
-                        STATE = "username"
-                        username_buf = ""
-                    elif btns["Leaderboard"].collidepoint(mouse_pos):
-                        lb_data = persistence.load_leaderboard()
-                        STATE = "leaderboard"
-                    elif btns["Settings"].collidepoint(mouse_pos):
-                        STATE = "settings"
-                    elif btns["Quit"].collidepoint(mouse_pos):
-                        pygame.quit(); sys.exit()
-
-            # ── SETTINGS ──────────────────────────────────────────────────────
-            elif STATE == "settings":
-                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                    btns = ui.draw_settings(screen, mouse_pos, settings, W, H)
-                    if btns["sound"].collidepoint(mouse_pos):
-                        settings["sound"] = not settings["sound"]
-                        persistence.save_settings(settings)
-                    elif btns["car_color"].collidepoint(mouse_pos):
-                        cols = list(ui.CAR_COLORS.keys())
-                        idx  = cols.index(settings["car_color"])
-                        settings["car_color"] = cols[(idx + 1) % len(cols)]
-                        persistence.save_settings(settings)
-                    elif btns["difficulty"].collidepoint(mouse_pos):
-                        diffs = ui.DIFFICULTY_LABELS
-                        idx   = diffs.index(settings["difficulty"])
-                        settings["difficulty"] = diffs[(idx + 1) % len(diffs)]
-                        persistence.save_settings(settings)
-                    elif btns["back"].collidepoint(mouse_pos):
-                        STATE = "menu"
-
-            # ── LEADERBOARD ───────────────────────────────────────────────────
-            elif STATE == "leaderboard":
-                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                    btns = ui.draw_leaderboard(screen, mouse_pos, lb_data, W, H)
-                    if btns["back"].collidepoint(mouse_pos):
-                        STATE = "menu"
-
-            # ── USERNAME ──────────────────────────────────────────────────────
-            elif STATE == "username":
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_RETURN:
-                        if username_buf.strip():
-                            start_game()
-                            STATE = "game"
-                    elif event.key == pygame.K_BACKSPACE:
-                        username_buf = username_buf[:-1]
-                    else:
-                        if len(username_buf) < 12 and event.unicode.isprintable():
-                            username_buf += event.unicode
-                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                    btns = ui.draw_username_prompt(screen, mouse_pos, username_buf, W, H)
-                    if btns["ok"].collidepoint(mouse_pos) and username_buf.strip():
-                        start_game()
-                        STATE = "game"
-
-            # ── GAME ──────────────────────────────────────────────────────────
-            elif STATE == "game":
-                if game:
-                    game.handle_event(event)
-                if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                    STATE = "menu"
-
-            # ── GAME OVER ─────────────────────────────────────────────────────
-            elif STATE == "gameover":
-                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                    btns = ui.draw_gameover(screen, mouse_pos,
-                                            gameover_data["score"],
-                                            gameover_data["distance"],
-                                            gameover_data["coins"], W, H)
-                    if btns["retry"].collidepoint(mouse_pos):
-                        start_game()
-                        STATE = "game"
-                    elif btns["menu"].collidepoint(mouse_pos):
-                        STATE = "menu"
-
-        # ── update & draw ─────────────────────────────────────────────────────
-        if STATE == "menu":
-            ui.draw_main_menu(screen, mouse_pos, W, H)
-
-        elif STATE == "settings":
-            ui.draw_settings(screen, mouse_pos, settings, W, H)
-
-        elif STATE == "leaderboard":
-            ui.draw_leaderboard(screen, mouse_pos, lb_data, W, H)
-
-        elif STATE == "username":
-            ui.draw_username_prompt(screen, mouse_pos, username_buf, W, H)
-
-        elif STATE == "game":
-            if game:
-                game.update(dt)
-                game.draw(screen)
-                ui.draw_hud(screen,
-                            game.score,
-                            game.distance,
-                            game.goal_dist,
-                            game.coins_count,
-                            game.active_pu,
-                            game.pu_time_left,
-                            W)
-
-                if not game.alive:
-                    # save score
-                    lb_data = persistence.save_score(
-                        username_buf or "ANON",
-                        game.score,
-                        game.distance,
-                        game.coins_count
-                    )
-                    gameover_data = {
-                        "score":    game.score,
-                        "distance": game.distance,
-                        "coins":    game.coins_count,
-                        "won":      game.won,
-                    }
-                    STATE = "gameover"
-
-        elif STATE == "gameover":
-            screen.fill(ui.DARK)
-            if gameover_data.get("won"):
-                ui.draw_text(screen, "🏁 YOU FINISHED! 🏁", 32, ui.ACCENT, W // 2, 40)
-            ui.draw_gameover(screen, mouse_pos,
-                             gameover_data["score"],
-                             gameover_data["distance"],
-                             gameover_data["coins"], W, H)
-
-        pygame.display.flip()
+leaderboard = load_scores()
 
 
-if __name__ == "__main__":
-    run()
+# ── main loop ──────────────────────
+while True:
+
+    dt = clock.tick(60) / 1000
+
+    # ── EVENTS ──────────────────────
+    for event in pygame.event.get():
+
+        if event.type == pygame.QUIT:
+            pygame.quit()
+            sys.exit()
+
+        # старт игры
+        if state == "menu":
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
+                state = "game"
+                player = Racer()
+                coins = []
+                obstacles = []
+                score = 0
+                money = 0
+                spawn_timer = 0
+
+        # возврат в меню
+        if state == "game_over":
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
+                state = "menu"
+
+        # управление (ВАЖНО: только KEYDOWN)
+        if state == "game":
+
+            if event.type == pygame.KEYDOWN:
+
+                if event.key == pygame.K_LEFT:
+                    player.move_left()
+
+                if event.key == pygame.K_RIGHT:
+                    player.move_right()
+
+    # ── GAME LOGIC ──────────────────
+    if state == "game":
+
+        player.update()
+
+        spawn_timer += dt
+
+        if spawn_timer > 0.8:
+            coins.append(Coin())
+            obstacles.append(Obstacle())
+            spawn_timer = 0
+
+
+        # ── coins SAFE ──
+        new_coins = []
+
+        for c in coins:
+
+            c.update()
+
+            if c.rect().colliderect(player.rect()):
+                money += c.value
+                continue
+
+            if c.y < 800:
+                new_coins.append(c)
+
+        coins = new_coins
+
+
+        # ── obstacles SAFE ──
+        new_obs = []
+        hit = False
+
+        for o in obstacles:
+
+            o.update()
+
+            if o.rect().colliderect(player.rect()):
+                hit = True
+                continue
+
+            if o.y < 800:
+                new_obs.append(o)
+
+        obstacles = new_obs
+
+
+        # ── GAME OVER ──
+        if hit:
+            save_score(score)
+            leaderboard = load_scores()
+            state = "game_over"
+
+
+        score += 1
+
+
+    # ── DRAW ────────────────────────
+    if state == "menu":
+        draw_menu(screen)
+
+    elif state == "game":
+        draw_game(screen, player, coins, obstacles, score, money)
+
+    elif state == "game_over":
+        draw_game_over(screen, score, leaderboard)
+
+    pygame.display.flip()

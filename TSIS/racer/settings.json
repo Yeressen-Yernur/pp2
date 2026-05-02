@@ -1,5 +1,4 @@
 {
-  "sound": true,
-  "car_color": "purple",
-  "difficulty": "normal"
+    "volume": 1.0,
+    "difficulty": "normal"
 }
