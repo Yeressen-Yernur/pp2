@@ -1,7 +1,0 @@
-CREATE DATABASE phonebook_db;
-
-CREATE TABLE contacts (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    phone VARCHAR(20) UNIQUE NOT NULL
-);
